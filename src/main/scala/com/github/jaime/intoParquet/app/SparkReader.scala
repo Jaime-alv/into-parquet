@@ -6,31 +6,10 @@ package com.github.jaime.intoParquet.app
 
 import com.github.jaime.intoParquet.app.SparkBuilder.spark
 import com.github.jaime.intoParquet.behaviour.AppLogger
-import com.github.jaime.intoParquet.model.TableDescription
 import com.github.jaime.intoParquet.service.Common.renderPath
 import org.apache.spark.sql.DataFrame
 
 object SparkReader extends AppLogger {
-
-    def readApplySchema(filename: String, description: TableDescription): DataFrame = {
-        val raw = readRawCSV(filename)
-        applySchema(raw, description)
-    }
-
-    /**
-      * Converts an input raw dataframe to a new dataframe with a specified user schema.
-      * If the data is not in a proper format, it will return `null`
-      *
-      * @param df input raw dataframe with all columns as string
-      * @param description new fields types to convert
-      * @return a new dataframe with the new schema
-      */
-    protected[app] def applySchema(df: DataFrame, description: TableDescription): DataFrame = {
-        logInfo(s"Apply schema to current data")
-        description.fields.foldLeft(df) { (temp, field) =>
-            temp.withColumn(field.fieldName, field.colExpression)
-        }
-    }
 
     def readInferSchema(filename: String): DataFrame = {
         renderReadMessage(filename)

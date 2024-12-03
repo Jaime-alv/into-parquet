@@ -4,7 +4,7 @@
 
 package com.github.jaime.intoParquet.model.execution
 
-import com.github.jaime.intoParquet.app.SparkReader.readApplySchema
+import com.github.jaime.intoParquet.app.SparkReader.readRawCSV
 import com.github.jaime.intoParquet.behaviour.AppLogger
 import com.github.jaime.intoParquet.behaviour.Executor
 import com.github.jaime.intoParquet.behaviour.ReadAndWrite
@@ -17,6 +17,7 @@ import com.github.jaime.intoParquet.model.enumeration.FallBackFail
 import com.github.jaime.intoParquet.model.enumeration.FallBackInfer
 import com.github.jaime.intoParquet.model.enumeration.FallBackNone
 import com.github.jaime.intoParquet.model.enumeration.FallBackRaw
+import com.github.jaime.intoParquet.model.execution.Parse.applySchema
 import com.github.jaime.intoParquet.service.FileLoader.readFile
 import org.apache.spark.sql.DataFrame
 
@@ -31,7 +32,9 @@ class Parse(_file: String, _paths: BasePaths, fallBack: FallBack)
 
     override def readFrom: DataFrame = {
         logDebug("Load table description")
-        readApplySchema(absoluteInputCSVPath, tableDescription.get)
+        val raw = readRawCSV(absoluteInputCSVPath)
+        logInfo(s"Apply schema to current data")
+        applySchema(raw, tableDescription.get)
     }
 
     override def execution(): Unit = {
@@ -74,4 +77,21 @@ class Parse(_file: String, _paths: BasePaths, fallBack: FallBack)
         }
     }
 
+}
+
+object Parse {
+
+    /**
+     * Converts an input raw dataframe to a new dataframe with a specified user schema.
+     * If the data is not in a proper format, it will return `null`
+     *
+     * @param df input raw dataframe with all columns as string
+     * @param description new fields types to convert
+     * @return a new dataframe with the new schema
+     */
+    protected[execution] def applySchema(df: DataFrame, description: TableDescription): DataFrame = {
+        description.fields.foldLeft(df) { (temp, field) =>
+            temp.withColumn(field.fieldName, field.colExpression)
+        }
+    }
 }
